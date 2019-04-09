@@ -1,6 +1,3 @@
-# Project to show proficiency in mySQL
-
-
 ## Goals
 
 * 1a. Display the first and last names of all actors from the table `actor`.
