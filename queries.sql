@@ -1,8 +1,14 @@
-/*NOTES: Please run one query at a time to display the correct query results*/
-/*HOTKEY: MacOS: cmd + enter, Windows: ctrl+enter */
+/*
+TO RUN ALL: 
+Windows: ctrl+shift+enter
+OSx: cmd+shift+enter
+ */
  
---  USE SAKILA DB -- 
+-- Prepare Environment -- 
 USE sakila;
+SET SQL_SAFE_UPDATES = 0;
+-- Turns off safe updates 
+DROP VIEW IF EXISTS sakila.top5_grossing_genres;
 
 -- 1a. Display the first and last names of all actors from the table actor.
 SELECT first_name, last_name FROM actor;
@@ -57,7 +63,6 @@ SELECT first_name, last_name, actor_id FROM actor WHERE first_name='HARPO';
 -- 4d. Perhaps we were too hasty in changing `GROUCHO` to `HARPO`. It turns out that `GROUCHO` was the correct name after all! 
 -- In a single query, if the first name of the actor is currently `HARPO`, change it to `GROUCHO`.
 UPDATE actor SET first_name = "GROUCHO" WHERE first_name = "HARPO";
-SELECT actor_id, first_name, last_name FROM actor WHERE actor_id=172;
 /* --------------------------------------- */ 
 
 -- 5a. You cannot locate the schema of the `address` table. Which query would you use to re-create it?
@@ -111,26 +116,92 @@ ORDER BY last_name;
 
 /* --------------------------------------- */ 
 
--- 7a. The music of Queen and Kris Kristofferson have seen an unlikely resurgence. As an unintended consequence, films starting with the letters `K` and `Q` have also soared in popularity. Use subqueries to display the titles of movies starting with the letters `K` and `Q` whose language is English.
-
+/*  7a. The music of Queen and Kris Kristofferson have seen an unlikely resurgence. As an unintended consequence, 
+films starting with the letters `K` and `Q` have also soared in popularity. 
+Use subqueries to display the titles of movies starting with the letters `K` and `Q` whose language is English.
+*/
+SELECT title FROM film
+WHERE (title LIKE 'Q%' OR title LIKE 'K%') 
+AND language_id = (
+    SELECT language_id
+    FROM language
+    WHERE name = 'English'
+);
 -- 7b. Use subqueries to display all actors who appear in the film `Alone Trip`.
+SELECT first_name, last_name FROM actor
+WHERE actor_id IN(
+	SELECT actor_id FROM film_actor
+    WHERE film_id IN(
+		SELECT film_id FROM film WHERE title = 'Alone Trip'
+	)
+);
 
 -- 7c. You want to run an email marketing campaign in Canada, for which you will need the names and email addresses of all Canadian customers. Use joins to retrieve this information.
+SELECT first_name, last_name, email FROM customer
+WHERE address_id IN (
+    SELECT address_id
+    FROM address
+    WHERE city_id IN(
+		SELECT city_id FROM city
+		WHERE country_id IN(
+			SELECT country_id FROM country WHERE country = 'Canada'
+		)
+	)
+);
 
 -- 7d. Sales have been lagging among young families, and you wish to target all family movies for a promotion. Identify all movies categorized as _family_ films.
+SELECT title FROM film
+WHERE film_id IN(
+	SELECT film_id
+    FROM film_category
+    WHERE category_id IN(
+		SELECT category_id FROM category WHERE name = 'Family'
+	)
+);
 
 -- 7e. Display the most frequently rented movies in descending order.
+SELECT film.title FROM film JOIN inventory 
+ON film.film_id = inventory.film_id
+JOIN rental ON inventory.inventory_id = rental.inventory_id
+GROUP BY film.title ORDER BY COUNT(rental.rental_id) DESC;
 
 -- 7f. Write a query to display how much business, in dollars, each store brought in.
+SELECT store.store_id, SUM(payment.amount) as 'Total Revenue' FROM store
+JOIN inventory ON store.store_id = inventory.store_id
+JOIN rental ON inventory.inventory_id = rental.inventory_id
+JOIN payment ON rental.rental_id= payment.rental_id
+GROUP BY store.store_id;
 
 -- 7g. Write a query to display for each store its store ID, city, and country.
+SELECT store.store_id, city.city, country.country FROM store
+JOIN address ON store.address_id = address.address_id
+JOIN city ON address.city_id = city.city_id
+JOIN country ON city.country_id = country.country_id;
 
--- 7h. List the top five genres in gross revenue in descending order. (--Hint--: you may need to use the following tables: category, film_category, inventory, payment, and rental.)
-
+/* 7h. List the top five genres in gross revenue in descending order. 
+(--Hint--: you may need to use the following tables: category, film_category, inventory, payment, and rental.) */
+SELECT category.name AS 'Category', SUM(payment.amount) AS 'Total Revenue' 
+FROM payment 
+JOIN rental ON payment.rental_id=rental.rental_id
+JOIN inventory ON inventory.inventory_id= rental.inventory_id
+JOIN film_category ON film_category.film_id=inventory.film_id
+JOIN category ON category.category_id=film_category.category_id
+GROUP BY category.category_id ORDER BY 'Total Revenue' DESC LIMIT 5;
 /* --------------------------------------- */ 
 
--- 8a. In your new role as an executive, you would like to have an easy way of viewing the Top five genres by gross revenue. Use the solution from the problem above to create a view. If you haven't solved 7h, you can substitute another query to create a view.
+/* 8a. In your new role as an executive, you would like to have an easy way of viewing the Top five genres by gross revenue. 
+Use the solution from the problem above to create a view. 
+If you haven't solved 7h, you can substitute another query to create a view. */
+CREATE VIEW top5_grossing_genres AS
+SELECT category.name AS 'Category', SUM(payment.amount) AS 'Total Revenue' 
+FROM payment 
+JOIN rental ON payment.rental_id=rental.rental_id
+JOIN inventory ON inventory.inventory_id= rental.inventory_id
+JOIN film_category ON film_category.film_id=inventory.film_id
+JOIN category ON category.category_id=film_category.category_id
+GROUP BY category.category_id ORDER BY 'Total Revenue' DESC LIMIT 5;
 
 -- 8b. How would you display the view that you created in 8a?
-
+SELECT * FROM sakila.top5_grossing_genres;
 -- 8c. You find that you no longer need the view `top_five_genres`. Write a query to delete it.
+DROP VIEW sakila.top5_grossing_genres;
