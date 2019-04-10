@@ -28,16 +28,19 @@ SELECT * FROM actor WHERE last_name LIKE '%LI%' ORDER BY last_name, first_name;
 
 
 -- 2d. Using `IN`, display the `country_id` and `country` columns of the following countries: Afghanistan, Bangladesh, and China:
+SELECT country_id, country FROM country WHERE country IN ('Afghanistan', 'Bangladesh', 'China');
 
 /* --------------------------------------- */ 
 
 -- 3a. You want to keep a description of each actor. You don't think you will be performing queries on a description, so create a column in the table `actor` named `description` and use the data type `BLOB` (Make sure to research the type `BLOB`, as the difference between it and `VARCHAR` are significant).
+ALTER TABLE actor ADD COLUMN description BLOB;
 
 -- 3b. Very quickly you realize that entering descriptions for each actor is too much effort. Delete the `description` column.
-
+ALTER TABLE actor DROP COLUMN description;
 /* --------------------------------------- */ 
 
 -- 4a. List the last names of actors, as well as how many actors have that last name.
+SELECT last_name, COUNT(*) FROM actor GROUP BY last_name;
 
 -- 4b. List last names of actors and the number of actors who have that last name, but only for names that are shared by at least two actors
 
